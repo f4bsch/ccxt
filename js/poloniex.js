@@ -761,9 +761,13 @@ module.exports = class poloniex extends Exchange {
     }
 
     async fetchDepositAddress (code, params = {}) {
-        let currency = this.currency (code);
+        let currencyId = code;
+        try {
+            let currency = this.currency(code);
+            currencyId = currency['id'];
+        } catch (e) {
+        }
         let response = await this.privatePostReturnDepositAddresses ();
-        let currencyId = currency['id'];
         let address = this.safeString (response, currencyId);
         this.checkAddress (address);
         let status = address ? 'ok' : 'none';
