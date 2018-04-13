@@ -30,6 +30,7 @@ module.exports = class huobipro extends Exchange {
                 'fetchTradingLimits': true,
                 'withdraw': true,
                 'fetchCurrencies': true,
+                'fetchWithdrawFee': true,
             },
             'timeframes': {
                 '1m': '1min',
@@ -431,6 +432,12 @@ module.exports = class huobipro extends Exchange {
             };
         }
         return result;
+    }
+
+    async fetchWithdrawFee (currency) {
+        currency = currency.toLowerCase();
+        let info = await this.publicGetDwWithdrawVirtualFee ({ currency });
+        return { 'fee': +info.data, info };
     }
 
     async fetchBalance (params = {}) {
