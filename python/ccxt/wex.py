@@ -22,6 +22,7 @@ class wex (liqui):
             'has': {
                 'CORS': False,
                 'fetchTickers': True,
+                'fetchDepositAddress': True,
             },
             'urls': {
                 'logo': 'https://user-images.githubusercontent.com/1294454/30652751-d74ec8f8-9e31-11e7-98c5-71469fcef03e.jpg',
@@ -148,7 +149,7 @@ class wex (liqui):
                         # returned by fetchOpenOrders if no open orders(fix for  #489) -> not an error
                         return
                     feedback = self.id + ' ' + self.json(response)
-                    messages = self.exceptions.messages
+                    messages = self.exceptions['messages']
                     if error in messages:
                         raise messages[error](feedback)
                     if error.find('It is not enough') >= 0:

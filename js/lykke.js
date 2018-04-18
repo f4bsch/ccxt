@@ -20,6 +20,7 @@ module.exports = class lykke extends Exchange {
                 'fetchTrades': false,
                 'fetchOpenOrders': true,
                 'fetchClosedOrders': true,
+                'fetchOrder': true,
                 'fetchOrders': true,
             },
             'requiredCredentials': {
@@ -250,15 +251,12 @@ module.exports = class lykke extends Exchange {
         if (market)
             symbol = market['symbol'];
         let timestamp = undefined;
-        if ('LastMatchTime' in order) {
-            if (order['LastMatchTime'])
-                timestamp = this.parse8601 (order['LastMatchTime']);
-        } else if ('Registered' in order) {
-            if (order['Registered'])
-                timestamp = this.parse8601 (order['Registered']);
-        } else if ('CreatedAt' in order) {
-            if (order['CreatedAt'])
-                timestamp = this.parse8601 (order['CreatedAt']);
+        if (('LastMatchTime' in order) && (order['LastMatchTime'])) {
+            timestamp = this.parse8601 (order['LastMatchTime']);
+        } else if (('Registered' in order) && (order['Registered'])) {
+            timestamp = this.parse8601 (order['Registered']);
+        } else if (('CreatedAt' in order) && (order['CreatedAt'])) {
+            timestamp = this.parse8601 (order['CreatedAt']);
         }
         let price = this.safeFloat (order, 'Price');
         let amount = this.safeFloat (order, 'Volume');

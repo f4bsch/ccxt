@@ -22,6 +22,7 @@ class lykke (Exchange):
                 'fetchTrades': False,
                 'fetchOpenOrders': True,
                 'fetchClosedOrders': True,
+                'fetchOrder': True,
                 'fetchOrders': True,
             },
             'requiredCredentials': {
@@ -239,15 +240,12 @@ class lykke (Exchange):
         if market:
             symbol = market['symbol']
         timestamp = None
-        if 'LastMatchTime' in order:
-            if order['LastMatchTime']:
-                timestamp = self.parse8601(order['LastMatchTime'])
-        elif 'Registered' in order:
-            if order['Registered']:
-                timestamp = self.parse8601(order['Registered'])
-        elif 'CreatedAt' in order:
-            if order['CreatedAt']:
-                timestamp = self.parse8601(order['CreatedAt'])
+        if ('LastMatchTime' in list(order.keys())) and(order['LastMatchTime']):
+            timestamp = self.parse8601(order['LastMatchTime'])
+        elif ('Registered' in list(order.keys())) and(order['Registered']):
+            timestamp = self.parse8601(order['Registered'])
+        elif ('CreatedAt' in list(order.keys())) and(order['CreatedAt']):
+            timestamp = self.parse8601(order['CreatedAt'])
         price = self.safe_float(order, 'Price')
         amount = self.safe_float(order, 'Volume')
         remaining = self.safe_float(order, 'RemainingVolume')

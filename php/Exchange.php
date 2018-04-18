@@ -30,7 +30,7 @@ SOFTWARE.
 
 namespace ccxt;
 
-$version = '1.12.111';
+$version = '1.13.1';
 
 // rounding mode
 const TRUNCATE = 0;
@@ -1355,7 +1355,7 @@ abstract class Exchange {
     }
 
     public function purge_cached_orders ($before) {
-        $this->orders = $this->index_by (array_filter ($this->orders, function ($orders) use ($before) {
+        $this->orders = $this->index_by (array_filter ($this->orders, function ($order) use ($before) {
             return ($order['status'] === 'open') || ($order['timestamp'] >= $before);
         }), 'id');
         return $this->orders;
@@ -1413,8 +1413,8 @@ abstract class Exchange {
         return $this->fetch_my_trades ($symbol, $since, $limit, $params);
     }
 
-    public function fetch_markets () { // stub
-        return $this->markets;
+    public function fetch_markets () {
+        return $this->markets ? array_values ($this->markets) : array ();
     }
 
     public function fetchMarkets  () {
@@ -1454,11 +1454,11 @@ abstract class Exchange {
     }
 
     public function edit_limit_buy_order ($id, $symbol, $amount, $price, $params = array ()) {
-        return $this->edit_limit_order ($symbol, 'buy', $amount, $price, $params);
+        return $this->edit_limit_order ($id, $symbol, 'buy', $amount, $price, $params);
     }
 
     public function edit_limit_sell_order ($id, $symbol, $amount, $price, $params = array ()) {
-        return $this->edit_limit_order ($symbol, 'sell', $amount, $price, $params);
+        return $this->edit_limit_order ($id, $symbol, 'sell', $amount, $price, $params);
     }
 
     public function edit_limit_order ($id, $symbol, $side, $amount, $price, $params = array ()) {

@@ -17,7 +17,7 @@ class southxchange extends Exchange {
             'rateLimit' => 1000,
             'has' => array (
                 'CORS' => true,
-                'createDepositAddres' => true,
+                'createDepositAddress' => true,
                 'fetchOpenOrders' => true,
                 'fetchTickers' => true,
                 'withdraw' => true,
@@ -101,8 +101,10 @@ class southxchange extends Exchange {
             $currency = $this->currencies_by_id[$uppercase];
             $code = $currency['code'];
             $free = floatval ($balance['Available']);
-            $used = floatval ($balance['Unconfirmed']);
-            $total = $this->sum ($free, $used);
+            $deposited = floatval ($balance['Deposited']);
+            $unconfirmed = floatval ($balance['Unconfirmed']);
+            $total = $this->sum ($deposited, $unconfirmed);
+            $used = $total - $free;
             $account = array (
                 'free' => $free,
                 'used' => $used,
@@ -226,8 +228,8 @@ class southxchange extends Exchange {
             'timestamp' => $timestamp,
             'datetime' => $this->iso8601 ($timestamp),
             'symbol' => $symbol,
-            'type' => $orderType,
-            'side' => null,
+            'type' => 'limit',
+            'side' => $orderType,
             'price' => $price,
             'amount' => $amount,
             'cost' => $cost,

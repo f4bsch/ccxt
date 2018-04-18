@@ -455,6 +455,18 @@ module.exports = class okcoinusd extends Exchange {
         return status;
     }
 
+    parseOrderSide (side) {
+        if (side === 1)
+            return 'buy'; // open long position
+        if (side === 2)
+            return 'sell'; // open short position
+        if (side === 3)
+            return 'sell'; // liquidate long position
+        if (side === 4)
+            return 'buy'; // liquidate short position
+        return side;
+    }
+
     parseOrder (order, market = undefined) {
         let side = undefined;
         let type = undefined;
@@ -462,9 +474,16 @@ module.exports = class okcoinusd extends Exchange {
             if ((order['type'] === 'buy') || (order['type'] === 'sell')) {
                 side = order['type'];
                 type = 'limit';
-            } else {
-                side = (order['type'] === 'buy_market') ? 'buy' : 'sell';
+            } else if (order['type'] === 'buy_market') {
+                side = 'buy';
                 type = 'market';
+            } else if (order['type'] === 'sell_market') {
+                side = 'sell';
+                type = 'market';
+            } else {
+                side = this.parseOrderSide (order['type']);
+                if (('contract_name' in order) || ('lever_rate' in order))
+                    type = 'margin';
             }
         }
         let status = this.parseOrderStatus (order['status']);
@@ -574,6 +593,7 @@ module.exports = class okcoinusd extends Exchange {
                 method += 'OrdersInfo';
                 request = this.extend (request, {
                     'type': status,
+                    'order_id': params['order_id'],
                 });
             } else {
                 method += 'OrderHistory';
@@ -592,17 +612,17 @@ module.exports = class okcoinusd extends Exchange {
 
     async fetchOpenOrders (symbol = undefined, since = undefined, limit = undefined, params = {}) {
         let open = 0; // 0 for unfilled orders, 1 for filled orders
-        return await this.fetchOrders (symbol, undefined, undefined, this.extend ({
+        return await this.fetchOrders (symbol, since, limit, this.extend ({
             'status': open,
         }, params));
     }
 
     async fetchClosedOrders (symbol = undefined, since = undefined, limit = undefined, params = {}) {
         let closed = 1; // 0 for unfilled orders, 1 for filled orders
-        let orders = await this.fetchOrders (symbol, undefined, undefined, this.extend ({
+        let orders = await this.fetchOrders (symbol, since, limit, this.extend ({
             'status': closed,
         }, params));
-        return this.filterBy (orders, 'status', 'closed');
+        return orders;
     }
 
     async withdraw (code, amount, address, tag = undefined, params = {}) {
