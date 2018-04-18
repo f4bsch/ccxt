@@ -148,6 +148,7 @@ module.exports = class yobit extends liqui {
     }
 
     async fetchDepositAddress (code, params = {}) {
+        await this.loadMarkets ();
         let currency = undefined;
         try {
             currency = this.currency(code);
