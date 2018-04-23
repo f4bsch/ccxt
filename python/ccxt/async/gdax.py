@@ -388,6 +388,7 @@ class gdax (Exchange):
             'info': order,
             'timestamp': timestamp,
             'datetime': self.iso8601(timestamp),
+            'lastTradeTimestamp': None,
             'status': status,
             'symbol': symbol,
             'type': order['type'],
@@ -461,6 +462,22 @@ class gdax (Exchange):
     async def cancel_order(self, id, symbol=None, params={}):
         await self.load_markets()
         return await self.privateDeleteOrdersId({'id': id})
+
+    def fee_to_precision(self, currency, fee):
+        cost = float(fee)
+        return('{:.' + str(self.currencies[currency].precision) + 'f}').format(cost)
+
+    def calculate_fee(self, symbol, type, side, amount, price, takerOrMaker='taker', params={}):
+        market = self.markets[symbol]
+        rate = market[takerOrMaker]
+        cost = amount * price
+        currency = market['quote']
+        return {
+            'type': takerOrMaker,
+            'currency': currency,
+            'rate': rate,
+            'cost': float(self.fee_to_precision(currency, rate * cost)),
+        }
 
     async def get_payment_methods(self):
         response = await self.privateGetPaymentMethods()

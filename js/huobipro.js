@@ -3,7 +3,7 @@
 //  ---------------------------------------------------------------------------
 
 const Exchange = require ('./base/Exchange');
-const { ExchangeError, InvalidOrder, OrderNotFound } = require ('./base/errors');
+const { ExchangeError, ExchangeNotAvailable, InvalidOrder, OrderNotFound } = require ('./base/errors');
 
 //  ---------------------------------------------------------------------------
 
@@ -109,9 +109,11 @@ module.exports = class huobipro extends Exchange {
                 'order-limitorder-amount-min-error': InvalidOrder, // limit order amount error, min: `0.001`
                 'order-orderstate-error': OrderNotFound, // canceling an already canceled order
                 'order-queryorder-invalid': OrderNotFound, // querying a non-existent order
+                'order-update-error': ExchangeNotAvailable, // undocumented error
             },
             'options': {
                 'fetchMarketsMethod': 'publicGetCommonSymbols',
+                'language': 'en-US',
             },
         });
     }
@@ -199,6 +201,7 @@ module.exports = class huobipro extends Exchange {
                 'base': base,
                 'quote': quote,
                 'lot': lot,
+                'active': true,
                 'precision': precision,
                 'taker': taker,
                 'maker': maker,
@@ -556,6 +559,7 @@ module.exports = class huobipro extends Exchange {
             'id': order['id'].toString (),
             'timestamp': timestamp,
             'datetime': this.iso8601 (timestamp),
+            'lastTradeTimestamp': undefined,
             'symbol': symbol,
             'type': type,
             'side': side,
@@ -587,9 +591,24 @@ module.exports = class huobipro extends Exchange {
         if (type === 'limit')
             order['price'] = this.priceToPrecision (symbol, price);
         let response = await this.privatePostOrderOrdersPlace (this.extend (order, params));
+        let timestamp = this.milliseconds ();
         return {
             'info': response,
             'id': response['data'],
+            'timestamp': timestamp,
+            'datetime': this.iso8601 (timestamp),
+            'lastTradeTimestamp': undefined,
+            'status': undefined,
+            'symbol': symbol,
+            'type': type,
+            'side': side,
+            'price': price,
+            'amount': amount,
+            'filled': undefined,
+            'remaining': undefined,
+            'cost': undefined,
+            'trades': undefined,
+            'fee': undefined,
         };
     }
 
