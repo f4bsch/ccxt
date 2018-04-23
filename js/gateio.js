@@ -22,6 +22,9 @@ module.exports = class gateio extends Exchange {
                 'withdraw': true,
                 'createDepositAddress': true,
                 'fetchDepositAddress': true,
+                'fetchOrder': true,
+                'fetchOpenOrders': true,
+                'fetchMyTrades': true,
             },
             'urls': {
                 'logo': 'https://user-images.githubusercontent.com/1294454/31784029-0313c702-b509-11e7-9ccc-bc0da6a0e435.jpg',
@@ -238,6 +241,22 @@ module.exports = class gateio extends Exchange {
         };
     }
 
+    parseMyTrade (trade, market) {
+        const ts = +trade['time_unix'] * 1000;
+        return {
+            'id': trade['tradeID'],
+            'order': trade['orderNumber'],
+            'info': trade,
+            'timestamp': ts,
+            'datetime': this.iso8601 (ts),
+            'symbol': market['symbol'],
+            'type': undefined,
+            'side': trade['type'],
+            'price': parseFloat (trade['rate']),
+            'amount': this.safeFloat (trade, 'amount'),
+        };
+    }
+
     async fetchTrades (symbol, since = undefined, limit = undefined, params = {}) {
         await this.loadMarkets ();
         let market = this.market (symbol);
@@ -245,6 +264,69 @@ module.exports = class gateio extends Exchange {
             'id': market['id'],
         }, params));
         return this.parseTrades (response['data'], market, since, limit);
+    }
+
+    async fetchOpenOrders (symbol = undefined, since = undefined, limit = undefined, params = {}) {
+        await this.loadMarkets ();
+        let request = {};
+        let market = undefined;
+        if (symbol) {
+            market = this.market (symbol);
+        }
+        let response = await this.privatePostOpenOrders (this.extend (request, params));
+        let orders = this.parseOrders (response['orders'], market, since, limit);
+        return this.filterBySymbol (orders, symbol);
+    }
+
+    async fetchOrder (id, symbol = undefined, params = {}) {
+        await this.loadMarkets ();
+        let market = this.market (symbol);
+        let request = { 'orderNumber': id, 'currencyPair': market['id'] };
+        let response = await this.privatePostGetOrder (this.extend (request, params));
+        return this.parseOrder (response['order'], market);
+    }
+
+    parseOrder (order, market = undefined) {
+        let timestamp = this.safeInteger (order, 'timestamp') * 1000;
+        let symbol = undefined;
+        if (market)
+            symbol = market['symbol'];
+        let amount = +order.initialAmount || +order.amount;
+        let price = +order.initialRate || +order.rate;
+        let filled = order['status'] === 'open' ? 0 : undefined;
+        if (order.filledAmount) {
+            filled = parseFloat (order.filledAmount);
+        }
+        return {
+            'info': order,
+            'id': order['orderNumber'],
+            'timestamp': timestamp,
+            'datetime': this.iso8601 (timestamp),
+            'status': order['status'],
+            'symbol': symbol,
+            'type': 'limit',
+            'side': order['type'],
+            'price': price,
+            'cost': undefined,
+            'amount': amount,
+            'filled': filled,
+            'average': order['filledRate'] ? parseFloat (order['filledRate']) : undefined,
+            'remaining': amount - filled,
+            'trades': undefined,
+            // gateio states wrong fee currency
+            // 'fee': order.feePercentage ?  { currency:order.feeCurrency, value: parseFloat(order.feeValue) * price } : undefined,
+            'fee': order.feePercentage ? { 'currency': market.base, 'value': amount * order.feePercentage / 100 } : undefined,
+        };
+    }
+
+    async fetchMyTrades (symbol = undefined, since = undefined, limit = undefined, params = {}) {
+        await this.loadMarkets ();
+        let market = this.market (symbol);
+        let request = { 'currencyPair': market['id'] }; // parameter currencyPair is required
+        let response = await this.privatePostTradeHistory (this.extend (request, params));
+        let result = Object.values (response['trades'] || []).map (trade => this.parseMyTrade (trade, market));
+        this.sortBy (result, 'timestamp');
+        return this.filterBySinceLimit (result, since, limit);
     }
 
     async createOrder (symbol, type, side, amount, price = undefined, params = {}) {
@@ -266,7 +348,9 @@ module.exports = class gateio extends Exchange {
 
     async cancelOrder (id, symbol = undefined, params = {}) {
         await this.loadMarkets ();
-        return await this.privatePostCancelOrder ({ 'orderNumber': id });
+        // let open = await this.fetchOpenOrders ();
+        const marketId = this.marketId (symbol);
+        return await this.privatePostCancelOrder ({ 'orderNumber': id, 'currencyPair': marketId });
     }
 
     async queryDepositAddress (method, currency, params = {}) {
