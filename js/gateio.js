@@ -288,15 +288,17 @@ module.exports = class gateio extends Exchange {
 
     parseOrder (order, market = undefined) {
         let timestamp = this.safeInteger (order, 'timestamp') * 1000;
-        let symbol = undefined;
-        if (market)
-            symbol = market['symbol'];
-        let amount = +order.initialAmount || +order.amount;
-        let price = +order.initialRate || +order.rate;
-        let filled = order['status'] === 'open' ? 0 : undefined;
-        if (order.filledAmount) {
-            filled = parseFloat (order.filledAmount);
+        let symbol = market['symbol'];
+        let amount = this.safeFloat (order, 'initialAmount');
+        if (!amount) {
+            amount = this.safeFloat (order, 'amount');
         }
+        let price = this.safeFloat (order, 'initialRate');
+        if (!price) {
+            price = this.safeFloat (order, 'rate');
+        }
+        let filled = this.safeFloat (order, 'filledAmount');
+        let feePercentage = this.safeFloat (order, 'feePercentage');
         return {
             'info': order,
             'id': order['orderNumber'],
@@ -310,12 +312,12 @@ module.exports = class gateio extends Exchange {
             'cost': undefined,
             'amount': amount,
             'filled': filled,
-            'average': order['filledRate'] ? parseFloat (order['filledRate']) : undefined,
+            'average': this.safeFloat (order, 'filledRate'),
             'remaining': amount - filled,
             'trades': undefined,
-            // gateio states wrong fee currency
-            // 'fee': order.feePercentage ?  { currency:order.feeCurrency, value: parseFloat(order.feeValue) * price } : undefined,
-            'fee': order.feePercentage ? { 'currency': market.base, 'value': amount * order.feePercentage / 100 } : undefined,
+            'fee': feePercentage ? { 'currency': market.base, 'value': amount * feePercentage / 100 } : undefined,
+            // gateio states wrong fee currency. this will return wrong value on sell side:
+            // 'fee': order.feeValue ?  { currency:order.feeCurrency, value: parseFloat(order.feeValue) * price } : undefined,
         };
     }
 
